@@ -21,7 +21,6 @@ let botState = {
 };
 
 // Health check endpoint for monitoring
-// Health check endpoint for monitoring
 app.get('/', (req, res) => {
   // "Blue Teal Shadow" Theme - Live Dashboard
   res.send(`
@@ -73,9 +72,8 @@ app.get('/', (req, res) => {
             margin-right: 8px;
             box-shadow: 0 0 10px currentColor;
             transition: color 0.3s ease, box-shadow 0.3s ease;
-            background-color: currentColor; /* Use CSS for the dot color */
+            background-color: currentColor;
           }
-          /* Override specific IDs to set background color for the dot */
           #live-indicator { background-color: currentColor; }
           
           .pulse { animation: pulse 2s infinite; }
@@ -167,12 +165,12 @@ app.get('/', (req, res) => {
               if (data.status === 'connected') {
                 statusText.innerHTML = '<span class="status-dot" style="color: #4ade80;"></span> Online & Running';
                 statusText.style.color = '#2dd4bf';
-                liveDot.style.color = '#4ade80'; // Green pulse
+                liveDot.style.color = '#4ade80';
                 container.style.boxShadow = '0 0 50px rgba(45, 212, 191, 0.2)';
               } else {
                 statusText.innerHTML = '<span class="status-dot" style="color: #f87171;"></span> Reconnecting...';
                 statusText.style.color = '#f87171';
-                liveDot.style.color = '#f87171'; // Red pulse
+                liveDot.style.color = '#f87171';
                 container.style.boxShadow = '0 0 50px rgba(248, 113, 113, 0.2)';
               }
 
@@ -188,11 +186,10 @@ app.get('/', (req, res) => {
 
             } catch (e) {
               document.getElementById('status-text').innerText = 'System Offline';
-              document.getElementById('live-indicator').style.color = '#64748b'; // Grey
+              document.getElementById('live-indicator').style.color = '#64748b';
             }
           };
 
-          // Poll every 1 second
           setInterval(updateStats, 1000);
           updateStats();
         </script>
@@ -277,14 +274,13 @@ function formatUptime(seconds) {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = seconds % 60;
-  return `${h}h ${m}m ${s}s`;
+  return `${h}h ${m}m ${s}`;
 }
 
 // ============================================================
 // SELF-PING - Prevent Render from sleeping
 // ============================================================
 const SELF_PING_INTERVAL = 10 * 60 * 1000; // 10 minutes
-
 const https = require('https');
 
 function startSelfPing() {
@@ -293,7 +289,7 @@ function startSelfPing() {
     const protocol = url.startsWith('https') ? https : http;
 
     protocol.get(`${url}/ping`, (res) => {
-      // console.log(`[KeepAlive] Self-ping: ${res.statusCode}`); // Optional: reduce spam
+      // Self-ping success
     }).on('error', (err) => {
       console.log(`[KeepAlive] Self-ping failed: ${err.message}`);
     });
@@ -333,15 +329,9 @@ function addInterval(callback, delay) {
 }
 
 function getReconnectDelay() {
-  // Aggressive reconnection: fast, flat delay or very subtle backoff
   const baseDelay = config.utils['auto-reconnect-delay'] || 2000;
   const maxDelay = config.utils['max-reconnect-delay'] || 15000;
-
-  // Use a much gentler backoff or just a flat delay if user wants "lower"
-  // Current logic: attempts * 1000 + base, capped at max
-  const delay = Math.min(baseDelay + (botState.reconnectAttempts * 1000), maxDelay);
-
-  return delay;
+  return Math.min(baseDelay + (botState.reconnectAttempts * 1000), maxDelay);
 }
 
 function createBot() {
@@ -350,7 +340,6 @@ function createBot() {
     return;
   }
 
-  // Cleanup previous bot
   if (bot) {
     clearAllIntervals();
     try {
@@ -374,12 +363,11 @@ function createBot() {
       port: config.server.port,
       version: config.server.version,
       hideErrors: false,
-      checkTimeoutInterval: 120000 // 2 minutes - detects dead connections without false-positive disconnects
+      checkTimeoutInterval: 120000
     });
 
     bot.loadPlugin(pathfinder);
 
-    // Connection timeout - if no spawn in 60s, reconnect
     const connectionTimeout = setTimeout(() => {
       if (!botState.connected) {
         console.log('[Bot] Connection timeout - no spawn received');
@@ -388,77 +376,60 @@ function createBot() {
     }, 60000);
 
     bot.once('spawn', () => {
-  clearTimeout(connectionTimeout);
-  botState.connected = true;
-  botState.lastActivity = Date.now();
-  botState.reconnectAttempts = 0;
-  isReconnecting = false;
+      clearTimeout(connectionTimeout);
+      botState.connected = true;
+      botState.lastActivity = Date.now();
+      botState.reconnectAttempts = 0;
+      isReconnecting = false;
 
-  console.log(`[Bot] [+] Successfully spawned on server!`);
-
-  // 🔐 FORCE LOGIN SYSTEM (Perzaan Edition)
+      console.log(`[Bot] [+] Successfully spawned on server!`);
 
       bot.on('messagestr', (msg) => {
-  const message = msg.toLowerCase();
+        const message = msg.toLowerCase();
 
-  // Login
-  if (message.includes('login')) {
-    bot.chat('/login Perzuu');
-    console.log('[Auth] Login detected');
-  }
+        if (message.includes('login')) {
+          bot.chat('/login Perzuu');
+          console.log('[Auth] Login detected');
+        }
 
-  // Register
-  if (message.includes('register')) {
-    bot.chat('/register Perzuu Perzuu');
-    console.log('[Auth] Register detected');
-  }
+        if (message.includes('register')) {
+          bot.chat('/register Perzuu Perzuu');
+          console.log('[Auth] Register detected');
+        }
 
-  // Creative mode success
-  if (
-    message.includes('commands.gamemode.success.self') ||
-    message.includes('set own game mode to creative mode')
-  ) {
-    console.log('[INFO] Bot is now in Creative Mode.');
+        if (
+          message.includes('commands.gamemode.success.self') ||
+          message.includes('set own game mode to creative mode')
+        ) {
+          console.log('[INFO] Bot is now in Creative Mode.');
+          bot.chat('/gamerule sendCommandFeedback false');
+        }
+      });
 
-    bot.chat('/gamerule sendCommandFeedback false');
-  }
-});
+      const mcData = require('minecraft-data')(config.server.version);
+      const defaultMove = new Movements(bot, mcData);
 
-      if (config.discord && config.discord.events.connect) {
-  sendDiscordWebhook(`[+] **Connected** to \`${config.server.ip}\``, 0x4ade80);
-}
+      initializeModules(bot, mcData, defaultMove);
+      setupLeaveRejoin(bot, createBot);
 
-const mcData = require('minecraft-data')(config.server.version);
-const defaultMove = new Movements(bot, mcData);
+      setTimeout(() => {
+        if (bot && botState.connected) {
+          bot.chat('/gamerule sendCommandFeedback false');
+        }
+      }, 3000);
 
-initializeModules(bot, mcData, defaultMove);
-setupLeaveRejoin(bot, createBot);
+      setTimeout(() => {
+        if (bot && botState.connected) {
+          bot.chat('/gamemode creative');
+          console.log('[INFO] Attempted to set creative mode (requires OP)');
+        }
+      }, 3000);
+    });
 
-setTimeout(() => {
-  if (bot && botState.connected) {
-    bot.chat('/gamerule sendCommandFeedback false');
-  }
-}, 3000);
-
-setTimeout(() => {
-  if (bot && botState.connected) {
-    bot.chat('/gamemode creative');
-    console.log('[INFO] Attempted to set creative mode (requires OP)');
-  }
-}, 3000);
-
-});
-
-    // Handle disconnection
     bot.on('end', (reason) => {
-      const wasSpawned = botState.connected;
       console.log(`[Bot] Disconnected: ${reason || 'Unknown reason'}`);
       botState.connected = false;
       clearAllIntervals();
-
-      if (config.discord && config.discord.events.disconnect && reason !== 'Periodic Rejoin') {
-        sendDiscordWebhook(`[-] **Disconnected**: ${reason || 'Unknown'}`, 0xf87171); // Red
-      }
 
       if (config.utils['auto-reconnect']) {
         scheduleReconnect();
@@ -466,18 +437,12 @@ setTimeout(() => {
     });
 
     bot.on("kicked", (reason) => {
-    console.log(
-        "[KICK]",
-        typeof reason === "string"
-            ? reason
-            : JSON.stringify(reason, null, 2)
-    );
-});
+      console.log("[KICK]", typeof reason === "string" ? reason : JSON.stringify(reason, null, 2));
+    });
 
     bot.on('error', (err) => {
       console.log(`[Bot] Error: ${err.message}`);
       botState.errors.push({ type: 'error', message: err.message, time: Date.now() });
-      // Don't immediately reconnect on error - let 'end' event handle it
     });
 
   } catch (err) {
@@ -487,13 +452,8 @@ setTimeout(() => {
 }
 
 function scheduleReconnect() {
-  if (reconnectTimeout) {
-    clearTimeout(reconnectTimeout);
-  }
-
-  if (isReconnecting) {
-    return;
-  }
+  if (reconnectTimeout) clearTimeout(reconnectTimeout);
+  if (isReconnecting) return;
 
   isReconnecting = true;
   botState.reconnectAttempts++;
@@ -513,37 +473,33 @@ function scheduleReconnect() {
 function initializeModules(bot, mcData, defaultMove) {
   console.log('[Modules] Initializing all modules...');
 
-  // ---------- AUTO AUTH ----------
   let authDone = false;
 
-bot.on('messagestr', (msg) => {
-  const message = msg.toLowerCase();
+  bot.on('messagestr', (msg) => {
+    const message = msg.toLowerCase();
+    if (authDone) return;
 
-  if (authDone) return;
+    if (message.includes('/register') || message.includes('register')) {
+      authDone = true;
+      bot.chat('/register Perzuu Perzuu');
+      console.log('[Auth] Register sent');
+      return;
+    }
 
-  if (message.includes('/register') || message.includes('register')) {
-    authDone = true;
-    bot.chat('/register Perzuu Perzuu');
-    console.log('[Auth] Register sent');
-    return;
-  }
+    if (message.includes('/login') || message.includes('login')) {
+      authDone = true;
+      bot.chat('/login Perzuu');
+      console.log('[Auth] Login sent');
+      return;
+    }
+  });
 
-  if (message.includes('/login') || message.includes('login')) {
-    authDone = true;
-    bot.chat('/login Perzuu');
-    console.log('[Auth] Login sent');
-    return;
-  }
-});
-
-  // ---------- MOVE TO POSITION ----------
-  if (config.position.enabled) {
+  if (config.position && config.position.enabled) {
     bot.pathfinder.setMovements(defaultMove);
     bot.pathfinder.setGoal(new GoalBlock(config.position.x, config.position.y, config.position.z));
   }
 
-  // ---------- ANTI-AFK (Simple) ----------
-  if (config.utils['anti-afk'].enabled) {
+  if (config.utils && config.utils['anti-afk'] && config.utils['anti-afk'].enabled) {
     addInterval(() => {
       if (bot && botState.connected) {
         bot.setControlState('jump', true);
@@ -552,44 +508,31 @@ bot.on('messagestr', (msg) => {
         }, 100);
         botState.lastActivity = Date.now();
       }
-    }, 3000); // Jump every 30 seconds
+    }, 30000);
 
     if (config.utils['anti-afk'].sneak) {
       bot.setControlState('sneak', true);
     }
   }
 
-  // ---------- MOVEMENT MODULES ----------
-  if (config.movement['circle-walk'].enabled) {
-    startCircleWalk(bot, defaultMove);
-  }
-  if (config.movement['random-jump'].enabled) {
-    startRandomJump(bot);
-  }
-  if (config.movement['look-around'].enabled) {
-    startLookAround(bot);
-  }
-
-  // ---------- CUSTOM MODULES ----------
-  if (config.modules.avoidMobs) avoidMobs(bot);
-  if (config.modules.combat) combatModule(bot, mcData);
-  if (config.modules.beds) bedModule(bot, mcData);
-  if (config.modules.chat) chatModule(bot);
-
-  // Periodic Rejoin
-  if (config.utils['periodic-rejoin'] && config.utils['periodic-rejoin'].enabled) {
-    periodicRejoin(bot);
+  if (config.movement) {
+    if (config.movement['circle-walk'] && config.movement['circle-walk'].enabled) {
+      startCircleWalk(bot, defaultMove);
+    }
+    if (config.movement['random-jump'] && config.movement['random-jump'].enabled) {
+      startRandomJump(bot);
+    }
+    if (config.movement['look-around'] && config.movement['look-around'].enabled) {
+      startLookAround(bot);
+    }
   }
 
   console.log('[Modules] All modules initialized!');
 }
 
-// Periodic Rejoin Module
 const setupLeaveRejoin = require('./leaveRejoin');
 
-// Periodic Rejoin Module - Handled by leaveRejoin.js now
 function periodicRejoin(bot) {
-  // Deprecated in favor of leaveRejoin.js
   console.log('[Rejoin] Using new leaveRejoin system.');
 }
 
@@ -597,4 +540,35 @@ function periodicRejoin(bot) {
 // MOVEMENT HELPERS
 // ============================================================
 function startCircleWalk(bot, defaultMove) {
-  co
+  addInterval(() => {
+    if (bot && botState.connected) {
+      bot.setControlState('forward', true);
+      bot.setControlState('right', true);
+    }
+  }, 1000);
+}
+
+function startRandomJump(bot) {
+  addInterval(() => {
+    if (bot && botState.connected) {
+      bot.setControlState('jump', true);
+      setTimeout(() => {
+        if (bot) bot.setControlState('jump', false);
+      }, 200);
+    }
+  }, 5000);
+}
+
+function startLookAround(bot) {
+  addInterval(() => {
+    if (bot && botState.connected) {
+      const yaw = Math.random() * Math.PI * 2;
+      const pitch = (Math.random() - 0.5) * Math.PI;
+      bot.look(yaw, pitch, true);
+    }
+  }, 4000);
+}
+
+// Start the bot
+createBot();
+                      
